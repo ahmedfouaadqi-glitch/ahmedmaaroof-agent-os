@@ -19,10 +19,19 @@ class Settings(BaseSettings):
     openrouter_app_name: str = "Ahmed Maaroof Agent OS"
     enable_faiss: bool = False
     embedding_model: str = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+    email_provider_url: str = ""
+    email_provider_token: str = ""
+    calendar_provider_url: str = ""
+    calendar_provider_token: str = ""
+    whisper_service_url: str = ""
+    kokoro_service_url: str = ""
+    image_provider_api_key: str = ""
     max_request_chars: int = Field(default=20_000, ge=1_000, le=100_000)
+
     @property
     def allowed_origins(self) -> list[str]:
         return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
+
     @property
     def fallback_models(self) -> list[str]:
         return [model.strip() for model in self.openrouter_fallback_models.split(",") if model.strip()]
