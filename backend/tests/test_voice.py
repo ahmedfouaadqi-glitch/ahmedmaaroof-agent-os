@@ -50,3 +50,12 @@ def test_unconfigured_voice_provider_fails_closed():
     )
     with pytest.raises(VoiceServiceError, match="not configured"):
         asyncio.run(service.transcribe(b"audio", "sample.wav", "audio/wav"))
+
+
+def test_voice_routes_are_registered():
+    from app.main import app
+
+    paths = {route.path for route in app.routes}
+    assert "/v1/voice/status" in paths
+    assert "/v1/voice/transcribe" in paths
+    assert "/v1/voice/speak" in paths
