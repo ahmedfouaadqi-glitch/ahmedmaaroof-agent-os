@@ -98,3 +98,48 @@ def test_oauth_rejects_unknown_integrations(tmp_path):
     service = OAuthConnector(tmp_path / "oauth.sqlite3", make_settings(tmp_path))
     with pytest.raises(OAuthError, match="Unsupported"):
         service.create_authorization("drive")
+
+
+def test_expired_access_token_is_refreshed_and_rotated(tmp_path):
+    settings = make_settings(tmp_path)
+    db_path = tmp_path / "oauth.sqlite3"
+    calls = []
+
+    def handler(request):
+        form = dict(parse_qs(request.content.decode()))
+        calls.append(form.get("grant_type", [""])[0])
+        if form.get("grant_type") == ["authorization_code"]:
+            return httpx.Response(200, json={
+                "access_token": "first-access",
+                "refresh_token": "stable-refresh",
+                "expires_in": 3600,
+                "scope": "openid email.read",
+            })
+        return httpx.Response(200, json={
+            "access_token": "rotated-access",
+            "expires_in": 3600,
+        })
+
+    service = OAuthConnector(db_path, settings, transport=httpx.MockTransport(handler))
+    auth = service.create_authorization("email")
+    state = parse_qs(urlsplit(auth["authorization_url"]).query)["state"][0]
+    asyncio.run(service.complete_authorization("email", "code", state))
+    with sqlite3.connect(db_path) as db:
+        db.execute(
+            "UPDATE oauth_connections SET expires_at = ? WHERE integration = 'email'",
+            ("2000-01-01T00:00:00+00:00",),
+        )
+    access = asyncio.run(service.access_token("email"))
+    assert access == "rotated-access"
+    assert calls == ["authorization_code", "refresh_token"]
+    assert service.status("email")["connected"] is True
+
+
+def test_oauth_api_routes_are_registered():
+    from app.main import app
+
+    paths = {route.path for route in app.routes}
+    assert "/v1/oauth/{integration}/start" in paths
+    assert "/v1/oauth/{integration}/callback" in paths
+    assert "/v1/oauth/{integration}/status" in paths
+    assert "/v1/oauth/{integration}" in paths
