@@ -26,6 +26,9 @@ class Settings(BaseSettings):
     whisper_service_url: str = ""
     kokoro_service_url: str = ""
     image_provider_api_key: str = ""
+    automation_worker_enabled: bool = False
+    automation_poll_seconds: int = Field(default=5, ge=1, le=300)
+    automation_timeout_seconds: int = Field(default=120, ge=10, le=900)
     max_request_chars: int = Field(default=20_000, ge=1_000, le=100_000)
 
     @property
