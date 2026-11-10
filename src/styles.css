@@ -174,3 +174,16 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
 .mobile-menu{display:inline-flex}.main-panel{padding:17px 14px 12px}.topbar{padding-bottom:14px}.topbar h1{font-size:17px}.eyebrow{font-size:7px}.system-indicator{display:none}.hero-panel{padding:22px 18px}.hero-layout{grid-template-columns:1fr}.hero-copy{text-align:center}.hero-copy p{margin-inline:auto}.hero-caption{justify-content:center}.hero-artwork{max-height:170px;overflow:hidden}.line-art-visual{max-width:250px}.metric-grid{grid-template-columns:repeat(2,1fr)}.metric-card{padding:12px}.metric-card b{font-size:18px}.module-grid{grid-template-columns:repeat(2,1fr)}.module-card{min-height:135px;padding:13px}.pipeline{grid-template-columns:1fr;gap:12px}.pipeline-step{display:flex;align-items:center;gap:10px}.pipeline-step>span{margin:0}.pipeline-step small{margin-top:2px}.pipeline-step>i{display:none}.chat-workspace{grid-template-columns:1fr;min-height:0}.chat-side-info{display:grid;grid-template-columns:1fr 1fr}.chat-agent-card{padding:13px}.chat-agent-card p{font-size:9px}.agent-capability{display:none}.chat-main{min-height:580px}.chat-history{min-height:340px;padding:12px}.automation-layout,.settings-grid{grid-template-columns:1fr}.integration-grid{grid-template-columns:1fr 1fr}.skill-summary,.integration-overview{grid-template-columns:repeat(3,1fr)}.memory-hero{flex-wrap:wrap}.memory-hero>div:nth-child(2){min-width:calc(100% - 65px)}.memory-hero>.secondary-btn{width:100%}.page-lead h2{font-size:18px}.activity-toolbar{align-items:flex-start;flex-direction:column}}
 @media(max-width:430px){.top-actions{gap:5px}.top-actions .icon-btn{padding:7px}.user-avatar{width:29px;height:29px}.integration-grid{grid-template-columns:1fr}.chat-side-info{grid-template-columns:1fr}.chat-side-info .compact{display:none}.skill-summary,.integration-overview{gap:6px}.skill-summary .metric-card,.integration-overview .metric-card{padding:9px}.skill-summary .metric-card span,.integration-overview .metric-card span{font-size:8px}.chat-composer>div>span{font-size:8px}.prompt-suggestions button{font-size:8px}.hero-caption{gap:5px}.hero-caption i{width:10px}}
 @media(prefers-reduced-motion:reduce){.page-enter,.designer-core,.designer-orbit{animation:none!important}}
+
+
+/* Voice capture and speech playback */
+.voice-tools{display:flex;flex-direction:column;gap:12px;margin:8px 0 12px}
+.voice-tools-head{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.voice-tools-head b,.voice-tools-head small{display:block}
+.voice-tools-head b{font-size:11px}.voice-tools-head small,.field-help{font-size:9px;color:#8294ad;margin-top:4px;line-height:1.6}
+.voice-status-row,.voice-actions{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.voice-status-row span{font-size:9px;color:#9fb4d0;padding:5px 9px;border:1px solid #ffffff13;border-radius:20px;background:#ffffff05}
+.voice-actions button{display:inline-flex;align-items:center;gap:7px}
+.danger-btn{display:inline-flex;align-items:center;gap:7px;background:#6c2c36;color:#ffe2e4;border:1px solid #e77a8755;border-radius:9px;padding:10px 14px;font-size:11px}
+.voice-audio{width:100%;max-width:420px;height:36px}
+@media(max-width:620px){.voice-tools-head{align-items:flex-start;flex-direction:column}.voice-actions button{flex:1;justify-content:center}}
