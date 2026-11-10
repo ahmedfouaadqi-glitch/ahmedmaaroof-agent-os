@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Activity, AudioLines, Bot, CalendarDays, Check, ChevronLeft, CircleAlert, Clock3, Command, FileText, Inbox, Layers3, LoaderCircle, Mic2, Palette, Plus, RefreshCw, Send, Settings2, ShieldCheck, Sparkles, Trash2, Workflow, X } from 'lucide-react';
+import { Activity, AudioLines, Bot, CalendarDays, Check, ChevronLeft, CircleAlert, Clock3, Command, Inbox, Layers3, LoaderCircle, Palette, Plus, RefreshCw, Send, ShieldCheck, Sparkles, Trash2, Workflow, X } from 'lucide-react';
 
 type Tab='overview'|'chat'|'skills'|'automations'|'integrations'|'designer';
 type Skill={id:string;name:string;description:string;enabled:boolean;risk:string;requires_approval?:boolean};
@@ -12,12 +12,12 @@ const descriptions:Record<string,string>={openrouter:'بوابة النماذج 
 function App(){
  const [tab,setTab]=useState<Tab>('overview'); const [token,setToken]=useState(''); const [lang,setLang]=useState<'ar'|'en'>('ar');
  const [skills,setSkills]=useState<Skill[]>([]); const [integrations,setIntegrations]=useState<Integration[]>([]); const [automations,setAutomations]=useState<Automation[]>([]);
- const [messages,setMessages]=useState<Message[]>([]); const [draft,setDraft]=useState(''); const [busy,setBusy]=useState(false); const [error,setError]=useState(''); const [loading,setLoading]=useState(false);
+ const [messages,setMessages]=useState<Message[]>([]); const [draft,setDraft]=useState(''); const [busy,setBusy]=useState(false); const [error,setError]=useState(''); 
  const [name,setName]=useState(''); const [prompt,setPrompt]=useState(''); const [interval,setInterval]=useState('1440');
  const rtl=lang==='ar';
  const headers=useMemo(()=>({'Content-Type':'application/json','Authorization':'Bearer '+token}),[token]);
  const request=useCallback(async(path:string,init:RequestInit={})=>{const res=await fetch(API+path,{...init,headers:{...headers,...(init.headers||{})}});const data=await res.json().catch(()=>({}));if(!res.ok)throw new Error(data.detail||'تعذر تنفيذ الطلب');return data;},[headers]);
- const refresh=useCallback(async()=>{if(!token)return;setLoading(true);setError('');try{const [s,i,a]=await Promise.all([request('/v1/skills'),request('/v1/integrations/status'),request('/v1/automations')]);setSkills(s.skills||[]);setIntegrations(i.integrations||[]);setAutomations(a.automations||[]);}catch(e){setError(e instanceof Error?e.message:'فشل الاتصال');}finally{setLoading(false);}},[request,token]);
+ const refresh=useCallback(async()=>{if(!token)return;setError('');try{const [s,i,a]=await Promise.all([request('/v1/skills'),request('/v1/integrations/status'),request('/v1/automations')]);setSkills(s.skills||[]);setIntegrations(i.integrations||[]);setAutomations(a.automations||[]);}catch(e){setError(e instanceof Error?e.message:'فشل الاتصال');}},[request,token]);
  useEffect(()=>{if(token)void refresh();},[token,refresh]);
  async function send(){const text=draft.trim();if(!text||busy)return;setMessages(m=>[...m,{role:'user',content:text}]);setDraft('');setBusy(true);setError('');try{const data=await request('/v1/agent/run',{method:'POST',body:JSON.stringify({message:text,language:lang})});setMessages(m=>[...m,{role:'assistant',content:data.answer}]);}catch(e){setError(e instanceof Error?e.message:'تعذر الاتصال');}finally{setBusy(false);}}
  async function createAutomation(){if(!name.trim()||!prompt.trim())return;try{await request('/v1/automations',{method:'POST',body:JSON.stringify({name,prompt,interval_minutes:Number(interval)})});setName('');setPrompt('');await refresh();}catch(e){setError(e instanceof Error?e.message:'تعذر إنشاء الأتمتة');}}
