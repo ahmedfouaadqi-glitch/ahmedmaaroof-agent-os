@@ -18,7 +18,7 @@ class AutomationWorker:
         self._stopping.clear()
         while not self._stopping.is_set():
             try:
-                job = await asyncio.to_thread(self.store.claim_due)
+                job = await asyncio.to_thread(lambda: self.store.claim_due(lease_seconds=self.timeout_seconds + 60))
                 if job:
                     await self._execute(job)
                     continue
