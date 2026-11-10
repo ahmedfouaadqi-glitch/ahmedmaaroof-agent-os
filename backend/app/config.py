@@ -39,6 +39,11 @@ class Settings(BaseSettings):
     whisper_service_url: str = ""
     kokoro_service_url: str = ""
     image_provider_api_key: str = ""
+    designer_provider_endpoint: str = ""
+    designer_provider_model: str = ""
+    designer_cost_per_image_usd: float = Field(default=0, ge=0, le=100)
+    designer_max_cost_usd: float = Field(default=0, ge=0, le=1000)
+    designer_output_dir: Path = Path("./data/designer")
     automation_worker_enabled: bool = False
     automation_poll_seconds: int = Field(default=5, ge=1, le=300)
     automation_timeout_seconds: int = Field(default=120, ge=10, le=900)
