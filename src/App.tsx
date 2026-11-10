@@ -1,37 +1,60 @@
-import { useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Activity, AudioLines, Bot, CalendarDays, Check, ChevronLeft, CircleAlert, Clock3, Command, FileText, Inbox, Layers3, LoaderCircle, Mic2, Palette, Plus, RefreshCw, Send, Settings2, ShieldCheck, Sparkles, Trash2, Workflow, X } from 'lucide-react';
 
+type Tab='overview'|'chat'|'skills'|'automations'|'integrations'|'designer';
+type Skill={id:string;name:string;description:string;enabled:boolean;risk:string;requires_approval?:boolean};
+type Integration={id:string;name:string;configured:boolean;mode:string;note:string};
+type Automation={id:string;name:string;prompt:string;interval_minutes:number;enabled:boolean;created_at:string};
 type Message={role:'user'|'assistant';content:string};
-const API=import.meta.env.VITE_AGENT_API_URL||'http://127.0.0.1:8000';
-export default function App(){
- const [lang,setLang]=useState<'en'|'ar'>('ar');
- const [token,setToken]=useState('');
- const [draft,setDraft]=useState('');
- const [busy,setBusy]=useState(false);
- const [messages,setMessages]=useState<Message[]>([]);
- const [error,setError]=useState('');
+const API=(import.meta.env.VITE_AGENT_API_URL||'http://127.0.0.1:8000').replace(/\/$/,'');
+const nav=[['overview','نظرة عامة',Activity],['chat','المحادثة',Bot],['skills','المهارات',Layers3],['automations','الأتمتة',Workflow],['integrations','التكاملات',Command],['designer','المصمم',Palette]] as const;
+const descriptions:Record<string,string>={openrouter:'بوابة النماذج وتوجيه الطلبات',email:'صندوق البريد الوارد',calendar:'المواعيد والتقويم',voice_stt:'تحويل الصوت إلى نص عبر Whisper',voice_tts:'تحويل النص إلى صوت عبر Kokoro',designer:'توليد الصور والفيديو'};
+function App(){
+ const [tab,setTab]=useState<Tab>('overview'); const [token,setToken]=useState(''); const [lang,setLang]=useState<'ar'|'en'>('ar');
+ const [skills,setSkills]=useState<Skill[]>([]); const [integrations,setIntegrations]=useState<Integration[]>([]); const [automations,setAutomations]=useState<Automation[]>([]);
+ const [messages,setMessages]=useState<Message[]>([]); const [draft,setDraft]=useState(''); const [busy,setBusy]=useState(false); const [error,setError]=useState(''); const [loading,setLoading]=useState(false);
+ const [name,setName]=useState(''); const [prompt,setPrompt]=useState(''); const [interval,setInterval]=useState('1440');
  const rtl=lang==='ar';
- async function send(){
-  const text=draft.trim(); if(!text||busy)return;
-  setMessages(m=>[...m,{role:'user',content:text}]);setDraft('');setBusy(true);setError('');
-  try{
-   const response=await fetch(API+'/v1/chat',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify({message:text,language:lang})});
-   const data=await response.json();if(!response.ok)throw new Error(data.detail||'API request failed');
-   setMessages(m=>[...m,{role:'assistant',content:data.answer}]);
-  }catch(e){setError(e instanceof Error?e.message:'Connection failed');}
-  finally{setBusy(false);}
- }
- return <main dir={rtl?'rtl':'ltr'} className="shell">
-  <aside className="sidebar"><div className="brand"><span className="mark">M</span><div><b>MAAROOF</b><small>AGENT OS</small></div></div>
-   <div className="side-label">{rtl?'مساحة العمل':'WORKSPACE'}</div><button className="nav active">◈　{rtl?'المحادثة':'Agent Chat'}</button><button className="nav">▦　{rtl?'الذاكرة':'Memory Vault'}</button><button className="nav">⌘　{rtl?'المهارات':'Skills'}</button>
-   <div className="side-bottom"><span className="status-dot"/> {rtl?'النظام محلي / API':'Local-first / API-backed'}</div>
+ const headers=useMemo(()=>({'Content-Type':'application/json','Authorization':'Bearer '+token}),[token]);
+ const request=useCallback(async(path:string,init:RequestInit={})=>{const res=await fetch(API+path,{...init,headers:{...headers,...(init.headers||{})}});const data=await res.json().catch(()=>({}));if(!res.ok)throw new Error(data.detail||'تعذر تنفيذ الطلب');return data;},[headers]);
+ const refresh=useCallback(async()=>{if(!token)return;setLoading(true);setError('');try{const [s,i,a]=await Promise.all([request('/v1/skills'),request('/v1/integrations/status'),request('/v1/automations')]);setSkills(s.skills||[]);setIntegrations(i.integrations||[]);setAutomations(a.automations||[]);}catch(e){setError(e instanceof Error?e.message:'فشل الاتصال');}finally{setLoading(false);}},[request,token]);
+ useEffect(()=>{if(token)void refresh();},[token,refresh]);
+ async function send(){const text=draft.trim();if(!text||busy)return;setMessages(m=>[...m,{role:'user',content:text}]);setDraft('');setBusy(true);setError('');try{const data=await request('/v1/agent/run',{method:'POST',body:JSON.stringify({message:text,language:lang})});setMessages(m=>[...m,{role:'assistant',content:data.answer}]);}catch(e){setError(e instanceof Error?e.message:'تعذر الاتصال');}finally{setBusy(false);}}
+ async function createAutomation(){if(!name.trim()||!prompt.trim())return;try{await request('/v1/automations',{method:'POST',body:JSON.stringify({name,prompt,interval_minutes:Number(interval)})});setName('');setPrompt('');await refresh();}catch(e){setError(e instanceof Error?e.message:'تعذر إنشاء الأتمتة');}}
+ async function toggleAutomation(item:Automation){try{await request('/v1/automations/'+item.id,{method:'PATCH',body:JSON.stringify({enabled:!item.enabled})});await refresh();}catch(e){setError(e instanceof Error?e.message:'تعذر تحديث الأتمتة');}}
+ async function deleteAutomation(id:string){try{await request('/v1/automations/'+id,{method:'DELETE'});await refresh();}catch(e){setError(e instanceof Error?e.message:'تعذر الحذف');}}
+ const configured=integrations.filter(x=>x.configured).length;
+ const title=nav.find(n=>n[0]===tab)?.[1]||'نظرة عامة';
+ return <main className="app-shell" dir={rtl?'rtl':'ltr'}>
+  <aside className="sidebar">
+   <div className="brand"><div className="brand-mark">M</div><div><b>MAAROOF</b><small>AGENT OPERATING SYSTEM</small></div></div>
+   <div className="nav-caption">مساحة العمل</div>
+   {nav.map(([id,label,Icon])=><button key={id} className={'nav-item '+(tab===id?'selected':'')} onClick={()=>setTab(id)}><Icon size={17}/><span>{label}</span>{tab===id&&<ChevronLeft size={15} className="nav-arrow"/>}</button>)}
+   <div className="sidebar-bottom"><div className="secure-icon"><ShieldCheck size={16}/></div><div><b>خصوصية أولاً</b><small>مفاتيح الربط تبقى محلياً في الجلسة</small></div></div>
   </aside>
-  <section className="main"><header><div><div className="eyebrow">PERSONAL INTELLIGENCE WORKSPACE</div><h1>{rtl?'مركز القيادة':'Command Center'}</h1></div><div className="header-actions"><button className="lang" onClick={()=>setLang(rtl?'en':'ar')}>{rtl?'EN':'عربي'}</button><span className="avatar">AM</span></div></header>
-   <div className="workspace"><div className="welcome"><div className="orb">✳</div><div className="eyebrow">{rtl?'أحمد معروف • نظام الوكلاء الشخصي':'AHMED MAAROOF • PERSONAL AGENT SYSTEM'}</div><h2>{rtl?'ما الذي نعمل عليه اليوم؟':'What are we working on today?'}</h2><p>{rtl?'اربط المعرفة، حلّل المعلومات، ونفّذ العمل من مساحة واحدة.':'Connect knowledge, analyze information, and move work forward from one workspace.'}</p></div>
-    <div className="conversation">{messages.map((m,i)=><article key={i} className={'message '+m.role}><b>{m.role==='user'?(rtl?'أنت':'You'):'MAAROOF'}</b><p>{m.content}</p></article>)}{busy&&<div className="thinking">{rtl?'جاري التفكير...':'Thinking...'}</div>}</div>
-    <div className="composer"><textarea value={draft} onChange={e=>setDraft(e.target.value)} onKeyDown={e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();void send();}}} placeholder={rtl?'اكتب رسالتك أو المهمة التي تريد تنفيذها...':'Ask Maaroof or describe a task...'} />
-     <div className="composer-footer"><input aria-label="Backend API token" type="password" value={token} onChange={e=>setToken(e.target.value)} placeholder={rtl?'مفتاح API للخادم':'Backend API token'} /><button disabled={busy||!draft.trim()} onClick={()=>void send()}>{busy?'…':rtl?'إرسال ↑':'Send ↑'}</button></div>
-    </div>{error&&<div className="error">{error}</div>}
-   </div><footer>MAAROOF AGENT OS <span>FOUNDATION 0.1 • PRIVATE BY DESIGN</span></footer>
+  <section className="main-panel">
+   <header className="topbar"><div><div className="eyebrow">AHMED MAAROOF / PERSONAL WORKSPACE</div><h1>{title}</h1></div><div className="top-actions"><button className="icon-btn" onClick={()=>void refresh()} title="تحديث"><RefreshCw size={16}/></button><button className="language-btn" onClick={()=>setLang(rtl?'en':'ar')}>{rtl?'EN':'عربي'}</button><div className="user-avatar">AM</div></div></header>
+   <div className="content-area">
+    {!token&&<section className="connect-banner"><div className="connect-icon"><ShieldCheck size={20}/></div><div className="connect-copy"><b>اتصال آمن بالخادم</b><span>أدخل رمز API الخاص بالخادم للوصول إلى وظائف Agent OS. لا يُحفظ الرمز في التخزين الدائم.</span></div><input type="password" value={token} onChange={e=>setToken(e.target.value)} placeholder="AGENT_API_KEY"/><button onClick={()=>void refresh()}>اتصال</button></section>}
+    {error&&<div className="error-banner"><CircleAlert size={16}/>{error}<button onClick={()=>setError('')}><X size={14}/></button></div>}
+    {tab==='overview'&&<div className="page-stack"><div className="hero-panel"><div className="hero-orb"><Sparkles size={26}/></div><div className="eyebrow">PERSONAL AGENT CORE · 0.2</div><h2>مركز القيادة</h2><p>مساحة موحدة لتوجيه المهام، وإدارة المهارات، ومتابعة تكاملات النظام.</p><button className="primary-btn" onClick={()=>setTab('chat')}>ابدأ محادثة <Send size={15}/></button></div>
+     <div className="metric-grid"><Metric label="المهارات المتاحة" value={skills.filter(s=>s.enabled).length} icon={<Layers3/>}/><Metric label="الأتمتة المحفوظة" value={automations.length} icon={<Workflow/>}/><Metric label="التكاملات المهيأة" value={configured+' / '+(integrations.length||6)} icon={<Command/>}/><Metric label="حالة النواة" value="API" icon={<Activity/>}/></div>
+     <div className="section-heading"><div><h3>مساحات النظام</h3><p>الوحدات المتاحة وحالة جاهزيتها</p></div></div>
+     <div className="module-grid"><Module icon={<Bot/>} title="المحادثة الذكية" desc="توجيه الطلبات إلى المهارات والنماذج" action={()=>setTab('chat')}/><Module icon={<Workflow/>} title="الأتمتة" desc="إنشاء وإدارة تعريفات سير العمل" action={()=>setTab('automations')}/><Module icon={<Inbox/>} title="البريد الوارد" desc="بانتظار ربط مزود البريد" action={()=>setTab('integrations')}/><Module icon={<CalendarDays/>} title="التقويم" desc="بانتظار ربط مزود التقويم" action={()=>setTab('integrations')}/></div>
+    </div>}
+    {tab==='chat'&&<div className="chat-layout"><div className="chat-intro"><div className="hero-orb small"><Bot size={22}/></div><h2>المساعد المركزي</h2><p>يخطط الطلب، يسترجع السياق المتاح، يختار المهارة المناسبة ثم ينفذ عبر بوابة النماذج.</p></div><div className="chat-history">{messages.map((m,i)=><div key={i} className={'chat-message '+m.role}><b>{m.role==='user'?'أنت':'MAAROOF AGENT'}</b><p>{m.content}</p></div>)}{busy&&<div className="typing"><LoaderCircle size={15} className="spin"/> جارٍ تنفيذ الطلب...</div>}</div><div className="chat-composer"><textarea value={draft} onChange={e=>setDraft(e.target.value)} onKeyDown={e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();void send();}}} placeholder="اكتب المهمة أو السؤال هنا..."/><div><span>Enter للإرسال · Shift + Enter لسطر جديد</span><button className="primary-btn" disabled={!token||busy||!draft.trim()} onClick={()=>void send()}>{busy?<LoaderCircle size={16} className="spin"/>:<Send size={16}/>} إرسال</button></div></div></div>}
+    {tab==='skills'&&<div className="page-stack"><PageLead title="مكتبة المهارات" subtitle="قدرات مسموح بها ومقيدة حسب مستوى المخاطر."/><div className="list-panel">{skills.map(s=><div className="list-row" key={s.id}><div className="list-icon"><Layers3 size={18}/></div><div className="list-main"><b>{s.name}</b><span>{s.description}</span><small>{s.id}</small></div><span className={'status-pill '+(s.enabled?'ready':'disabled')}>{s.enabled?'مفعّلة':'معطّلة'}</span></div>)}{!skills.length&&<Empty text="أدخل رمز API لتحميل المهارات."/>}</div><div className="notice">المهارات عالية المخاطر لا تُفعّل من الواجهة. تحتاج إلى تنفيذ منفصل وصلاحيات وموافقة صريحة.</div></div>}
+    {tab==='automations'&&<div className="page-stack"><PageLead title="الأتمتة وسير العمل" subtitle="سجّل المهام المتكررة وحدد تكرارها المقصود."/><div className="notice warning"><Clock3 size={16}/> حالياً يتم حفظ تعريفات الأتمتة وإدارتها فقط. لم يتم تشغيل Scheduler في الخلفية بعد.</div><div className="form-panel"><h3><Plus size={17}/> أتمتة جديدة</h3><label>اسم الأتمتة<input value={name} onChange={e=>setName(e.target.value)} placeholder="مثلاً: ملخص صباحي"/></label><label>تعليمات التنفيذ<textarea value={prompt} onChange={e=>setPrompt(e.target.value)} placeholder="ما المهمة التي يجب أن ينفذها الوكيل؟"/></label><label>الفاصل الزمني<select value={interval} onChange={e=>setInterval(e.target.value)}><option value="60">كل ساعة</option><option value="360">كل 6 ساعات</option><option value="720">كل 12 ساعة</option><option value="1440">يومياً</option><option value="10080">أسبوعياً</option></select></label><button className="primary-btn" disabled={!token||name.trim().length<2||prompt.trim().length<5} onClick={()=>void createAutomation()}>حفظ التعريف <Plus size={15}/></button></div><div className="list-panel">{automations.map(a=><div className="list-row" key={a.id}><div className="list-icon"><Workflow size={18}/></div><div className="list-main"><b>{a.name}</b><span>{a.prompt}</span><small>كل {a.interval_minutes} دقيقة</small></div><button className={'toggle '+(a.enabled?'on':'')} onClick={()=>void toggleAutomation(a)}>{a.enabled?'مفعّل':'متوقف'}</button><button className="icon-btn danger" onClick={()=>void deleteAutomation(a.id)} title="حذف"><Trash2 size={15}/></button></div>)}{!automations.length&&<Empty text="لا توجد تعريفات أتمتة بعد."/>}</div></div>}
+    {tab==='integrations'&&<div className="page-stack"><PageLead title="مركز التكاملات" subtitle="حالة الإعدادات التي قرأها الخادم. الحالة المهيأة لا تعني نجاح الاتصال الفعلي."/><div className="integration-grid">{integrations.map(item=><div className="integration-card" key={item.id}><div className="integration-top"><div className="list-icon"><IntegrationIcon id={item.id}/></div><span className={'status-pill '+(item.configured?'ready':'disabled')}>{item.configured?'إعداد موجود':'غير مهيأ'}</span></div><h3>{item.name}</h3><p>{descriptions[item.id]||item.note}</p><small>{item.mode}</small></div>)}{!integrations.length&&<Empty text="أدخل رمز API لتحميل حالة التكاملات."/>}</div><div className="notice">لا توجد صلاحيات بريد أو تقويم أو خدمات صوت متصلة تلقائياً. يجب إعداد موفر موثوق واختبار الاتصال قبل تفعيل العمليات.</div></div>}
+    {tab==='designer'&&<div className="page-stack"><PageLead title="استوديو التصميم" subtitle="واجهة مخصصة لمسار التصميم الإبداعي."/><div className="designer-panel"><div className="designer-icon"><Palette size={28}/></div><h2>مساحة التصميم قيد التهيئة</h2><p>سيتم ربط مولّد الصور والفيديو هنا بعد اختيار مزود الخدمة، إعداد مفاتيح الخادم، وتحديد حدود التكلفة والموافقة قبل التوليد.</p><div className="designer-features"><span><Check size={14}/> أوامر تصميم نصية</span><span><Check size={14}/> سياق العلامة التجارية</span><span><Check size={14}/> مراجعة قبل التصدير</span></div><button className="secondary-btn" onClick={()=>setTab('integrations')}>عرض حالة التكاملات</button></div></div>}
+   </div>
+   <footer className="footer"><span>MAAROOF AGENT OS</span><span>CORE FOUNDATION · PRIVATE BY DESIGN</span></footer>
   </section>
  </main>
 }
+function Metric({label,value,icon}:{label:string;value:string|number;icon:React.ReactNode}){return <div className="metric-card"><div className="metric-icon">{icon}</div><span>{label}</span><b>{value}</b></div>}
+function Module({icon,title,desc,action}:{icon:React.ReactNode;title:string;desc:string;action:()=>void}){return <button className="module-card" onClick={action}><div>{icon}</div><b>{title}</b><span>{desc}</span></button>}
+function PageLead({title,subtitle}:{title:string;subtitle:string}){return <div className="page-lead"><h2>{title}</h2><p>{subtitle}</p></div>}
+function Empty({text}:{text:string}){return <div className="empty-state">{text}</div>}
+function IntegrationIcon({id}:{id:string}){if(id.includes('voice'))return <AudioLines size={18}/>;if(id==='email')return <Inbox size={18}/>;if(id==='calendar')return <CalendarDays size={18}/>;if(id==='designer')return <Palette size={18}/>;return <Command size={18}/>}
+export default App;
