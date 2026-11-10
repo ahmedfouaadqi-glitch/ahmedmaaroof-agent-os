@@ -49,3 +49,6 @@ class DesignerEstimateIn(BaseModel):
 
 class DesignerGenerateIn(DesignerEstimateIn):
     approval_id: str = Field(min_length=32, max_length=128)
+
+class ToolExecuteIn(BaseModel):
+    arguments: dict = Field(default_factory=dict)
