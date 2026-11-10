@@ -37,3 +37,8 @@ class AutomationIn(BaseModel):
 
 class AutomationToggle(BaseModel):
     enabled: bool
+
+class VoiceSpeakIn(BaseModel):
+    input: str = Field(min_length=1, max_length=12_000)
+    voice: str = Field(default="af_heart", min_length=1, max_length=80)
+    response_format: Literal["mp3", "wav", "opus", "aac", "flac"] = "mp3"
