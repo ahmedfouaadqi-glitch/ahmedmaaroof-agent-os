@@ -89,12 +89,6 @@ class ToolRegistry:
 
     async def execute(self, tool_id: str, arguments: dict[str, Any], context: dict[str, Any]) -> dict[str, Any]:
         spec = self._tools.get(tool_id)
-        if spec is None:
-            raise ToolError("Unknown tool")
-        if not spec.enabled or spec.handler is None:
-            raise ToolError("Tool is disabled")
-        if spec.requires_approval:
-            raise ToolError("Tool requires an explicit approval workflow and cannot be invoked through this endpoint")
         execution_id = str(uuid4())
         started = datetime.now(timezone.utc).isoformat()
         digest = hashlib.sha256(
@@ -107,6 +101,29 @@ class ToolRegistry:
                    VALUES (?, ?, 'running', ?, ?)""",
                 (execution_id, tool_id, digest, started),
             )
+
+        denied_reason = None
+        if spec is None:
+            denied_reason = "unknown_tool"
+            message = "Unknown tool"
+        elif not spec.enabled or spec.handler is None:
+            denied_reason = "disabled"
+            message = "Tool is disabled"
+        elif spec.requires_approval:
+            denied_reason = "approval_required"
+            message = "Tool requires an explicit approval workflow and cannot be invoked through this endpoint"
+        else:
+            message = ""
+
+        if denied_reason:
+            with self._connect() as db:
+                db.execute(
+                    """UPDATE tool_executions SET status = 'denied',
+                       error_code = ?, finished_at = ? WHERE id = ?""",
+                    (denied_reason, datetime.now(timezone.utc).isoformat(), execution_id),
+                )
+            raise ToolError(message)
+
         try:
             parsed = spec.input_model.model_validate(arguments)
             result = spec.handler(parsed, context)
