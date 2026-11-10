@@ -2,14 +2,15 @@ import asyncio
 from contextlib import asynccontextmanager
 from fastapi import Depends, FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import Response
+from fastapi.responses import FileResponse, Response
 from app.config import get_settings
-from app.schemas import AgentRunRequest, AutomationIn, AutomationToggle, ChatRequest, ChatResponse, DocumentIn, SearchRequest, VoiceSpeakIn
+from app.schemas import AgentRunRequest, AutomationIn, AutomationToggle, ChatRequest, ChatResponse, DocumentIn, SearchRequest, VoiceSpeakIn, DesignerEstimateIn, DesignerGenerateIn
 from app.security import require_api_key
 from app.services.automation import AutomationStore
 from app.services.automation_worker import AutomationWorker
 from app.services.voice import VoiceServices, VoiceServiceError
 from app.services.oauth import OAuthConnector, OAuthError
+from app.services.designer import DesignerService, DesignerError
 from app.services.agent import AgentOrchestrator
 from app.services.integrations import integration_status
 from app.services.memory import MemoryStore
@@ -26,6 +27,7 @@ async def lifespan(app: FastAPI):
     app.state.automations = AutomationStore(settings.database_path)
     app.state.voice = VoiceServices(settings)
     app.state.oauth = OAuthConnector(settings.database_path, settings)
+    app.state.designer = DesignerService(settings.database_path, settings.designer_output_dir, settings)
     app.state.automation_worker = None
     app.state.automation_worker_task = None
     if settings.automation_worker_enabled:
@@ -138,6 +140,36 @@ async def oauth_disconnect(integration: str):
         return {"disconnected": app.state.oauth.disconnect(integration)}
     except OAuthError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@app.post("/v1/designer/estimate", dependencies=[Depends(require_api_key)], tags=["designer"])
+async def designer_estimate(request: DesignerEstimateIn):
+    try:
+        return app.state.designer.estimate(request.prompt, request.size)
+    except DesignerError as exc:
+        status_code = 503 if "not configured" in str(exc) or "budget" in str(exc) else 400
+        raise HTTPException(status_code=status_code, detail=str(exc)) from exc
+
+@app.post("/v1/designer/generate", dependencies=[Depends(require_api_key)], tags=["designer"])
+async def designer_generate(request: DesignerGenerateIn):
+    try:
+        return await app.state.designer.generate(request.prompt, request.size, request.approval_id)
+    except DesignerError as exc:
+        message = str(exc)
+        status_code = 503 if "not configured" in message or "budget" in message else 409 if "Approval" in message or "approved" in message else 502
+        raise HTTPException(status_code=status_code, detail=message) from exc
+
+@app.get("/v1/designer/history", dependencies=[Depends(require_api_key)], tags=["designer"])
+async def designer_history(limit: int = 20):
+    return {"generations": app.state.designer.history(max(1, min(limit, 100)))}
+
+@app.get("/v1/designer/artifacts/{artifact_id}", dependencies=[Depends(require_api_key)], tags=["designer"])
+async def designer_artifact(artifact_id: str):
+    result = app.state.designer.artifact_path(artifact_id)
+    if not result:
+        raise HTTPException(status_code=404, detail="Designer artifact not found")
+    path, media_type = result
+    return FileResponse(path, media_type=media_type, filename=path.name)
 
 @app.get("/v1/voice/status", dependencies=[Depends(require_api_key)], tags=["voice"])
 async def voice_status():
