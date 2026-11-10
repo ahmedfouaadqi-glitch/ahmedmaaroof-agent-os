@@ -13,7 +13,8 @@
 5. PR #9 — Designer Engine: تقدير تكلفة، موافقة لمرة واحدة، بوابة ميزانية، توليد صورة عبر endpoint متوافق، وتخزين محلي للنتائج. الإعدادات المالية والمزود معطلة افتراضياً.
 6. PR #10 — Tool Registry: أدوات قراءة آمنة، عقود مدخلات، تصنيف مخاطر، تعطيل الأدوات عالية الخطورة، وسجل تدقيق دائم.
 7. PR #11 — Security Hardening: rate limiting في SQLite، حد حجم الطلبات، headers أمنية، وتحديد معدل callback OAuth.
-8. PR #12 (قيد الإنشاء) — API Integration Tests: تشغيل FastAPI lifecycle على قاعدة مؤقتة واختبار الأدوات والأتمتة وحالات تكامل الصوت وOAuth وDesigner.
+8. PR #12 — API Integration Tests: تشغيل FastAPI lifecycle على قاعدة مؤقتة واختبار الأدوات والأتمتة وحالات تكامل الصوت وOAuth وDesigner.
+9. PR #13 (قيد الإنشاء) — Playwright E2E: اختبار Chromium لمسار الاتصال والدردشة والأدوات وDesigner والتجاوب.
 
 كل PR ما زال مفتوحاً. PR #5 مبني على PR #4، وPR #6 مبني على PR #5. يجب دمجها بالتسلسل إذا تقرر الدمج، مع مراجعة كل تغيير قبل الدمج.
 
@@ -64,9 +65,9 @@
 
 ### 7. الاختبارات
 - أضيف اختبار تكامل FastAPI يغطي health/security headers، tool execution/audit، automation create/list، وفشل OAuth/Designer الآمن عند غياب الإعدادات.
-- CI الحالي اجتاز 32 اختبار Backend وبناء Frontend.
-- لا توجد بعد اختبارات متصفح Playwright، ولا اختبارات خدمات خارجية حقيقية أو OAuth tenant أو Whisper/Kokoro أو Designer.
-- يلزم اختبار ضغط وأمن وعزل مستخدمين قبل الإنتاج.
+- أضيف Playwright Chromium E2E لمسار الاتصال والدردشة وتنفيذ أداة قراءة وDesigner estimate/approval/preview والاستجابة على الهاتف.
+- CI اجتاز 32 اختبار Backend وبناء Frontend واختبار Playwright E2E.
+- لا تزال اختبارات الخدمات الخارجية الحقيقية وOAuth tenant وWhisper/Kokoro وDesigner واختبارات الضغط والأمن وعزل المستخدمين مطلوبة.
 
 ### 8. النشر
 - لا يوجد نشر إنتاجي موثق في هذه المرحلة.
