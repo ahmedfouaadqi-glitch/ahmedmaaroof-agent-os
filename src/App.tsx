@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import {
   Activity, AudioLines, Bot, CalendarDays, Check, ChevronLeft, CircleAlert, Clock3,
-  Command, Database, FileSearch, Gauge, Inbox, Layers3, LoaderCircle, Menu, MessageSquare,
+  Command, Database, FileSearch, Inbox, Layers3, LoaderCircle, Menu, MessageSquare,
   Palette, Plus, RefreshCw, Search, Send, Settings2, ShieldCheck, Sparkles, Trash2,
-  Workflow, X, Zap, BookOpen, Server, PanelLeftClose, PanelLeftOpen, CircleHelp
+  Workflow, X, Zap, Server, PanelLeftClose, CircleHelp
 } from 'lucide-react';
 import { LineArtArtwork, LineArtLogo } from './components/LineArtArtwork';
 
