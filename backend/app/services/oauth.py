@@ -69,7 +69,7 @@ class OAuthConnector:
     def _config(self, integration: str) -> dict[str, str]:
         if integration not in self.INTEGRATIONS:
             raise OAuthError("Unsupported OAuth integration")
-        prefix = integration.upper() + "_OAUTH_"
+        prefix = integration.lower() + "_oauth_"
         fields = {
             "authorization_url": getattr(self.settings, prefix + "AUTHORIZATION_URL", ""),
             "token_url": getattr(self.settings, prefix + "TOKEN_URL", ""),
