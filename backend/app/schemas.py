@@ -5,6 +5,9 @@ class ChatRequest(BaseModel):
     message: str = Field(min_length=1, max_length=20_000)
     language: Literal["ar", "en"] | None = None
 
+class AgentRunRequest(ChatRequest):
+    skill_id: str | None = Field(default=None, max_length=100)
+
 class SourceItem(BaseModel):
     id: str
     title: str
@@ -26,3 +29,11 @@ class DocumentIn(BaseModel):
 class SearchRequest(BaseModel):
     query: str = Field(min_length=1, max_length=2_000)
     limit: int = Field(default=6, ge=1, le=20)
+
+class AutomationIn(BaseModel):
+    name: str = Field(min_length=2, max_length=120)
+    prompt: str = Field(min_length=5, max_length=4_000)
+    interval_minutes: int = Field(ge=15, le=43_200)
+
+class AutomationToggle(BaseModel):
+    enabled: bool

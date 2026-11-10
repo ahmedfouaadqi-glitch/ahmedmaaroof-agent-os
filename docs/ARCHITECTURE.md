@@ -1,30 +1,34 @@
 # Ahmed Maaroof Agent OS — Architecture
 
-## System boundaries
-- **Lovable / React UI:** presentation, user interaction, Arabic/English and RTL/LTR.
-- **FastAPI:** authenticated API, orchestration entry point, model gateway and memory access.
-- **Markdown Vault:** human-readable project knowledge, compatible with Obsidian.
-- **SQLite FTS5:** local lexical retrieval. The optional FAISS implementation is a later enhancement and is not enabled by default.
-- **OpenRouter:** server-side model provider. The API key must never be shipped to the browser.
-- **Supabase:** optional identity, workspace persistence and Edge Function gateway. It is not required for local API operation.
-- **Vercel:** static frontend deployment. It does not host the persistent local Markdown Vault or FastAPI process.
+## Layers
+- **React / Vite UI:** bilingual Arabic/English workspace, RTL/LTR.
+- **FastAPI:** authenticated API, orchestrator, model gateway, skills, automation definitions and integration status.
+- **Orchestrator:** Plan → Retrieve → Route → Execute → Reflect. Explicit skill selection is supported; heuristic routing is only a default.
+- **Memory adapter:** current SQLite FTS5 + Markdown Vault implementation. No new knowledge source is selected or ingested in this phase.
+- **Model Gateway:** server-side OpenRouter adapter with fallback model list.
+- **Skills:** allowlisted capabilities. High-risk administration and collection skills remain disabled.
+- **Automation store:** persistent SQLite definitions. A scheduler/worker is not yet implemented.
+- **Integration adapters:** configuration/status contracts for email, calendar, Whisper, Kokoro and design providers. Status does not imply live connectivity.
+- **Vercel:** static frontend only. Persistent FastAPI, SQLite and local sidecars require a persistent host or local runtime.
 
 ## Request flow
-1. The UI sends a message to FastAPI with a bearer token.
-2. FastAPI validates the token and searches the local memory index.
-3. Relevant excerpts are attached to the model prompt as untrusted evidence.
-4. FastAPI calls OpenRouter using server-side credentials.
-5. The response, model name, usage and retrieved sources are returned to the UI.
+1. Authenticate request.
+2. Plan and select an allowlisted skill.
+3. Retrieve indexed evidence.
+4. Execute via configured model provider.
+5. Return answer, model, usage, skill, execution stages and source citations.
 
-## Security controls
-- Protected routes fail closed when `AGENT_API_KEY` is not configured.
-- CORS origins are explicitly configured.
-- API and provider secrets stay server-side.
-- High-risk skills (network administration and collection) are disabled in the foundation and require separate implementation and approval.
-- Never store passwords, API keys, private keys or router credentials in Markdown Vault notes.
+## Security
+- API routes fail closed without AGENT_API_KEY.
+- Provider credentials stay server-side.
+- Retrieved content is treated as untrusted evidence.
+- High-risk skills are disabled.
+- Do not place secrets in the Vault or frontend bundle.
+- Production requires user-scoped auth, workspace isolation, rate limits, audit retention and OAuth token encryption.
 
-## Lovable integration
-Use Lovable to create or maintain the frontend, then configure its API URL and bearer-token flow against a secured backend. For production, prefer a user-scoped Supabase Edge gateway rather than embedding a shared backend token in browser code. See `LOVABLE_SETUP_AR.md`.
-
-## Deployment topology
-The Vite frontend can be deployed to Vercel. FastAPI and its Vault/database need a persistent host or remain local. A tunnel is optional and must be protected by authentication and restrictive network policy.
+## Deferred
+- Selection and connection of knowledge sources.
+- Real email/calendar OAuth and operations.
+- Persistent automation scheduler/worker.
+- Local voice service protocol and runtime.
+- Image/video provider integration and approval workflow.
