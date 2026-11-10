@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { LineArtArtwork, LineArtLogo } from './components/LineArtArtwork';
-import { Activity, AudioLines, Bot, CalendarDays, Check, ChevronLeft, CircleAlert, Clock3, Command, Inbox, Layers3, LoaderCircle, Palette, Plus, RefreshCw, Send, ShieldCheck, Sparkles, Trash2, Workflow, X } from 'lucide-react';
+import { Activity, AudioLines, Bot, CalendarDays, Check, ChevronLeft, CircleAlert, Clock3, Command, Inbox, Layers3, LoaderCircle, Palette, Plus, RefreshCw, Send, ShieldCheck, Trash2, Workflow, X } from 'lucide-react';
 
 type Tab='overview'|'chat'|'skills'|'automations'|'integrations'|'designer';
 type Skill={id:string;name:string;description:string;enabled:boolean;risk:string;requires_approval?:boolean};
