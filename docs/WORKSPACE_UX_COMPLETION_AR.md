@@ -9,7 +9,7 @@ This change expands the existing React workspace without replacing the FastAPI e
 - Memory search backed by `POST /v1/memory/search`, including rendering the API's `excerpt` field.
 - Vault ingestion through `POST /v1/memory/ingest-vault`.
 - Skills catalog with enabled/disabled and risk visibility.
-- Automation definition management with an explicit warning that definitions are not scheduled executions.
+- Automation management backed by a persistent worker, durable execution history and scheduler status. Worker remains disabled by default.
 - Integration readiness overview that distinguishes configuration from verified connectivity.
 - Designer workspace shell with provider, approval and cost prerequisites clearly stated.
 - Session activity log and workspace settings for API URL, session token and language.

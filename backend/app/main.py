@@ -1,3 +1,4 @@
+import asyncio
 from contextlib import asynccontextmanager
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -5,6 +6,7 @@ from app.config import get_settings
 from app.schemas import AgentRunRequest, AutomationIn, AutomationToggle, ChatRequest, ChatResponse, DocumentIn, SearchRequest
 from app.security import require_api_key
 from app.services.automation import AutomationStore
+from app.services.automation_worker import AutomationWorker
 from app.services.agent import AgentOrchestrator
 from app.services.integrations import integration_status
 from app.services.memory import MemoryStore
@@ -19,18 +21,42 @@ async def lifespan(app: FastAPI):
     app.state.provider = OpenRouterProvider(settings)
     app.state.agent = AgentOrchestrator(app.state.memory, app.state.provider)
     app.state.automations = AutomationStore(settings.database_path)
-    yield
+    app.state.automation_worker = None
+    app.state.automation_worker_task = None
+    if settings.automation_worker_enabled:
+        app.state.automation_worker = AutomationWorker(
+            app.state.automations, app.state.agent,
+            poll_seconds=settings.automation_poll_seconds,
+            timeout_seconds=settings.automation_timeout_seconds,
+        )
+        app.state.automation_worker_task = asyncio.create_task(
+            app.state.automation_worker.run(), name="agent-os-automation-worker"
+        )
+    try:
+        yield
+    finally:
+        if app.state.automation_worker:
+            await app.state.automation_worker.stop()
+        if app.state.automation_worker_task:
+            try:
+                await asyncio.wait_for(app.state.automation_worker_task, timeout=5)
+            except asyncio.TimeoutError:
+                app.state.automation_worker_task.cancel()
+                try:
+                    await app.state.automation_worker_task
+                except asyncio.CancelledError:
+                    pass
 
 app = FastAPI(title="Ahmed Maaroof Agent OS API", version="0.2.0", description="Bilingual personal agent operating system API.", lifespan=lifespan)
 app.add_middleware(CORSMiddleware, allow_origins=settings.allowed_origins, allow_credentials=True, allow_methods=["GET","POST","PATCH","DELETE","OPTIONS"], allow_headers=["Authorization","Content-Type","apikey","x-client-info"])
 
 @app.get("/v1/health", tags=["system"])
 async def health():
-    return {"status":"ok","service":"ahmed-maaroof-agent-os","version":"0.2.0","model_configured":bool(settings.openrouter_api_key),"auth_configured":bool(settings.agent_api_key)}
+    return {"status":"ok","service":"ahmed-maaroof-agent-os","version":"0.2.0","model_configured":bool(settings.openrouter_api_key),"auth_configured":bool(settings.agent_api_key),"automation_worker_enabled":settings.automation_worker_enabled}
 
 @app.get("/v1/system/stats", dependencies=[Depends(require_api_key)], tags=["system"])
 async def system_stats():
-    return {"memory":app.state.memory.stats(),"retrieval_mode":app.state.memory.retrieval_mode,"model_configured":bool(settings.openrouter_api_key),"automation_count":len(app.state.automations.list())}
+    return {"memory":app.state.memory.stats(),"retrieval_mode":app.state.memory.retrieval_mode,"model_configured":bool(settings.openrouter_api_key),"automation_count":len(app.state.automations.list()),"automation_worker_enabled":settings.automation_worker_enabled}
 
 @app.get("/v1/integrations/status", dependencies=[Depends(require_api_key)], tags=["integrations"])
 async def integrations():
@@ -72,7 +98,7 @@ async def run_agent(request: AgentRunRequest):
 
 @app.get("/v1/automations", dependencies=[Depends(require_api_key)], tags=["automations"])
 async def list_automations():
-    return {"automations":app.state.automations.list(),"scheduler":"definitions-only"}
+    return {"automations":app.state.automations.list(),"scheduler":"running" if settings.automation_worker_enabled else "disabled","worker_enabled":settings.automation_worker_enabled}
 
 @app.post("/v1/automations", dependencies=[Depends(require_api_key)], tags=["automations"])
 async def create_automation(request: AutomationIn):
@@ -84,6 +110,12 @@ async def toggle_automation(automation_id: str, request: AutomationToggle):
     if not result:
         raise HTTPException(status_code=404,detail="Automation not found")
     return result
+
+@app.get("/v1/automations/{automation_id}/executions", dependencies=[Depends(require_api_key)], tags=["automations"])
+async def automation_executions(automation_id: str, limit: int = 20):
+    if not app.state.automations.get(automation_id):
+        raise HTTPException(status_code=404,detail="Automation not found")
+    return {"executions":app.state.automations.executions(automation_id, max(1, min(limit, 100)))}
 
 @app.delete("/v1/automations/{automation_id}", dependencies=[Depends(require_api_key)], tags=["automations"])
 async def delete_automation(automation_id: str):
