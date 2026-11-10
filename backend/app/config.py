@@ -9,6 +9,8 @@ class Settings(BaseSettings):
     app_host: str = "127.0.0.1"
     app_port: int = 8000
     agent_api_key: str = ""
+    default_workspace_id: str = "personal"
+    default_workspace_name: str = "Personal workspace"
     cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
     vault_path: Path = Path("./Vault")
     database_path: Path = Path("./data/agent_os.sqlite3")
