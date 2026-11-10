@@ -65,7 +65,11 @@ async def system_stats():
 
 @app.get("/v1/integrations/status", dependencies=[Depends(require_api_key)], tags=["integrations"])
 async def integrations():
-    return {"integrations":integration_status(settings)}
+    items = integration_status(settings)
+    for item in items:
+        if item["id"] in ("email", "calendar"):
+            item["authorized"] = app.state.oauth.status(item["id"])["connected"]
+    return {"integrations": items}
 
 @app.get("/v1/skills", dependencies=[Depends(require_api_key)], tags=["skills"])
 async def skills():
