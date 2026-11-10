@@ -16,6 +16,10 @@ These are explicit adapter contracts. A local deployment with different route na
 - `POST /v1/voice/speak` accepts validated JSON and returns audio bytes.
 - All endpoints require the backend bearer API key.
 
+## Frontend
+- The chat workspace includes browser microphone recording, transcription into the composer, Kokoro speech generation for the latest assistant reply, audio playback, and a service status probe.
+- Microphone access requires HTTPS or localhost and explicit browser permission.
+
 ## Limits and verification
 - Provider calls use bounded HTTP timeouts.
 - No credentials are currently required for the documented local sidecar contract; do not expose these services publicly without authentication and network controls.
