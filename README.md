@@ -38,12 +38,24 @@ npm install
 npm run dev
 ```
 
+### Persistent backend container
+```bash
+cp .env.example .env
+chmod 600 .env
+# Set AGENT_API_KEY and trusted provider settings in .env before starting.
+docker compose config
+docker compose up -d --build
+docker compose ps
+```
+
+The backend binds to `127.0.0.1:8000` by default. Put a TLS reverse proxy in front of it; do not expose the API port directly. See [deployment preparation](docs/DEPLOYMENT_PREPARATION_AR.md).
+
 Copy `.env.example` to `.env`. Never expose OpenRouter or service-role keys in browser variables.
 
 ## Lovable integration
 See [Lovable setup](docs/LOVABLE_SETUP_AR.md) and [the build prompt](docs/LOVABLE_PROMPT_AR.md). Lovable owns the UI workflow; FastAPI remains the trusted execution and memory layer.
 
 ## Status
-Foundation 0.1. Backend unit tests: **4 passed** in the authoring environment. Frontend production build, live provider credentials, Supabase deployment, FAISS activation and Vercel deployment require separate setup and verification.
+The repository now contains a nine-section workspace UI, FastAPI services for memory/automation/voice/OAuth/Designer, an allowlisted tool registry, baseline API hardening and integration tests. CI verification is tracked in the open pull requests. Real provider credentials, local voice sidecars, OAuth tenant consent, user/workspace isolation, browser E2E, production secrets and live deployment still require separate verification. This is a personal single-owner foundation and is not yet production-ready for multiple untrusted users.
 
 See [execution status](docs/EXECUTION_STATUS_AR.md), [architecture](docs/ARCHITECTURE.md) and [roadmap](docs/ROADMAP_AR.md).
