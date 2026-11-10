@@ -42,3 +42,10 @@ class VoiceSpeakIn(BaseModel):
     input: str = Field(min_length=1, max_length=12_000)
     voice: str = Field(default="af_heart", min_length=1, max_length=80)
     response_format: Literal["mp3", "wav", "opus", "aac", "flac"] = "mp3"
+
+class DesignerEstimateIn(BaseModel):
+    prompt: str = Field(min_length=3, max_length=4_000)
+    size: Literal["1024x1024", "1024x1536", "1536x1024"] = "1024x1024"
+
+class DesignerGenerateIn(DesignerEstimateIn):
+    approval_id: str = Field(min_length=32, max_length=128)
