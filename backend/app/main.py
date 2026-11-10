@@ -159,7 +159,7 @@ async def execute_tool(tool_id: str, request: ToolExecuteIn):
             {
                 "memory": app.state.memory,
                 "automations": app.state.automations,
-                "integrations": lambda: integration_status(settings),
+                "integrations": lambda: [dict(item, authorized=app.state.oauth.status(item["id"])["connected"]) if item["id"] in ("email", "calendar") else item for item in integration_status(settings)],
             },
         )
     except ToolError as exc:
