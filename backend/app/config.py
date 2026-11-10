@@ -1,0 +1,32 @@
+from functools import lru_cache
+from pathlib import Path
+from pydantic import Field
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+class Settings(BaseSettings):
+    model_config = SettingsConfigDict(env_file=("../.env", ".env"), extra="ignore")
+    app_env: str = "development"
+    app_host: str = "127.0.0.1"
+    app_port: int = 8000
+    agent_api_key: str = ""
+    cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
+    vault_path: Path = Path("./Vault")
+    database_path: Path = Path("./data/agent_os.sqlite3")
+    openrouter_api_key: str = ""
+    openrouter_model: str = "openai/gpt-4.1-mini"
+    openrouter_fallback_models: str = ""
+    openrouter_site_url: str = "http://localhost:5173"
+    openrouter_app_name: str = "Ahmed Maaroof Agent OS"
+    enable_faiss: bool = False
+    embedding_model: str = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+    max_request_chars: int = Field(default=20_000, ge=1_000, le=100_000)
+    @property
+    def allowed_origins(self) -> list[str]:
+        return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
+    @property
+    def fallback_models(self) -> list[str]:
+        return [model.strip() for model in self.openrouter_fallback_models.split(",") if model.strip()]
+
+@lru_cache(maxsize=1)
+def get_settings() -> Settings:
+    return Settings()
