@@ -8,7 +8,8 @@
 
 1. PR #4 — Workspace UX: واجهة الأقسام التسعة، تحسينات التفاعل والاستجابة والهوية البصرية. البناء واختبارات Backend السابقة نجحت.
 2. PR #5 — Automation Worker: جدولة داخل FastAPI، حجز ذري للمهام، lease، execution history، timeout وإعادة المحاولة. CI على commit المصحح نجح: 8 اختبارات Backend وبناء Frontend.
-3. PR #6 — Voice Adapters: عقود Whisper/Kokoro متوافقة مع OpenAI API، endpoints محمية، حد 15MB، readiness probe واختبارات MockTransport. CI نجح: 11 اختبار Backend وبناء Frontend.
+3. PR #6 — Voice Adapters: عقود Whisper/Kokoro متوافقة مع OpenAI API، endpoints محمية، حد 15MB، readiness probe، واجهة تسجيل وتشغيل صوت، واختبارات MockTransport. CI نجح في مرحلة API: 12 اختبار Backend وبناء Frontend.
+4. PR #7 (قيد الإنشاء) — OAuth Foundation: PKCE، state لمرة واحدة، تشفير Fernet، تخزين SQLite، تجديد access token تلقائياً، واختبارات. لا يوجد مزود OAuth حقيقي مختار أو موصول بعد.
 
 كل PR ما زال مفتوحاً. PR #5 مبني على PR #4، وPR #6 مبني على PR #5. يجب دمجها بالتسلسل إذا تقرر الدمج، مع مراجعة كل تغيير قبل الدمج.
 
@@ -30,14 +31,15 @@
 - لم يتم تفعيل العامل في بيئة تشغيل حقيقية، ولم تُنفذ مهام مدفوعة.
 
 ### 2. الصوت
-- لا توجد واجهة أمامية لتسجيل الميكروفون وتشغيل الصوت الناتج.
+- واجهة التسجيل والتحويل والتشغيل موجودة في المحادثة.
 - اختبارات Mock لا تثبت أن خدمات Whisper/Kokoro الفعلية متاحة أو متوافقة.
-- يلزم اختبار الخدمات المحلية الفعلية على الجهاز أو الخادم المستهدف.
+- يلزم اختبار الميكروفون والصوت الفعليين على الجهاز وخدمات Whisper/Kokoro المحلية.
 
 ### 3. البريد والتقويم
-- لم يتم تنفيذ OAuth أو ربط Gmail/Google Calendar أو Microsoft Graph.
-- يلزم تحديد مزود البريد والتقويم، وامتلاك OAuth Client ID/Secret، وتحديد Redirect URI ونطاقات الصلاحيات.
-- لا تُرسل رسائل ولا تُنشأ أحداث تقويم حالياً.
+- تم تنفيذ أساس OAuth 2.0 + PKCE، state لمرة واحدة، تشفير Fernet للرموز، التخزين الآمن، وتجديد access token.
+- لم يتم اختيار مزود البريد والتقويم أو تنفيذ Gmail/Google Calendar/Microsoft Graph API.
+- يلزم تحديد المزود وتوفير OAuth Client ID/Secret وRedirect URI والنطاقات.
+- لا تُقرأ الرسائل أو الأحداث ولا تُرسل رسائل ولا تُنشأ أحداث تقويم حالياً.
 
 ### 4. Designer Engine
 - لا يوجد مزود توليد صور/فيديو مرتبط فعلياً.

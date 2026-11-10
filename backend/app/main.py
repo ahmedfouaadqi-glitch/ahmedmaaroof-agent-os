@@ -9,6 +9,7 @@ from app.security import require_api_key
 from app.services.automation import AutomationStore
 from app.services.automation_worker import AutomationWorker
 from app.services.voice import VoiceServices, VoiceServiceError
+from app.services.oauth import OAuthConnector, OAuthError
 from app.services.agent import AgentOrchestrator
 from app.services.integrations import integration_status
 from app.services.memory import MemoryStore
@@ -24,6 +25,7 @@ async def lifespan(app: FastAPI):
     app.state.agent = AgentOrchestrator(app.state.memory, app.state.provider)
     app.state.automations = AutomationStore(settings.database_path)
     app.state.voice = VoiceServices(settings)
+    app.state.oauth = OAuthConnector(settings.database_path, settings)
     app.state.automation_worker = None
     app.state.automation_worker_task = None
     if settings.automation_worker_enabled:
@@ -63,7 +65,11 @@ async def system_stats():
 
 @app.get("/v1/integrations/status", dependencies=[Depends(require_api_key)], tags=["integrations"])
 async def integrations():
-    return {"integrations":integration_status(settings)}
+    items = integration_status(settings)
+    for item in items:
+        if item["id"] in ("email", "calendar"):
+            item["authorized"] = app.state.oauth.status(item["id"])["connected"]
+    return {"integrations": items}
 
 @app.get("/v1/skills", dependencies=[Depends(require_api_key)], tags=["skills"])
 async def skills():
@@ -99,6 +105,39 @@ async def run_agent(request: AgentRunRequest):
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
+
+
+@app.post("/v1/oauth/{integration}/start", dependencies=[Depends(require_api_key)], tags=["integrations"])
+async def oauth_start(integration: str):
+    try:
+        return app.state.oauth.create_authorization(integration)
+    except OAuthError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+@app.get("/v1/oauth/{integration}/callback", tags=["integrations"])
+async def oauth_callback(integration: str, code: str | None = None, state: str | None = None, error: str | None = None):
+    if error:
+        raise HTTPException(status_code=400, detail="OAuth provider denied authorization")
+    if not code or not state:
+        raise HTTPException(status_code=400, detail="OAuth code and state are required")
+    try:
+        return await app.state.oauth.complete_authorization(integration, code, state)
+    except OAuthError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+@app.get("/v1/oauth/{integration}/status", dependencies=[Depends(require_api_key)], tags=["integrations"])
+async def oauth_status(integration: str):
+    try:
+        return app.state.oauth.status(integration)
+    except OAuthError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+@app.delete("/v1/oauth/{integration}", dependencies=[Depends(require_api_key)], tags=["integrations"])
+async def oauth_disconnect(integration: str):
+    try:
+        return {"disconnected": app.state.oauth.disconnect(integration)}
+    except OAuthError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 @app.get("/v1/voice/status", dependencies=[Depends(require_api_key)], tags=["voice"])
 async def voice_status():
