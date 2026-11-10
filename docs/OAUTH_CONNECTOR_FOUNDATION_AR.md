@@ -30,9 +30,9 @@ Store the result as `OAUTH_TOKEN_ENCRYPTION_KEY` in the backend secret manager o
 ## Deliberate limits
 - The identity provider is not selected in code. Configure Google, Microsoft or another OAuth 2.0 provider using its official endpoints and registered redirect URI.
 - This foundation does not yet implement provider-specific Gmail/Outlook message listing, reading, sending, or Google/Microsoft calendar operations.
-- Refresh-token renewal and revocation at the identity provider are not yet implemented. Expired access tokens must not be treated as usable.
+- Automatic refresh-token renewal is implemented when an access token is within 60 seconds of expiry. Provider-side token revocation is not yet implemented; disconnect removes the local encrypted record.
 - The existing API still uses one shared backend bearer key; this is a single-owner connector foundation, not multi-user account isolation.
 - No OAuth secrets or real provider credentials were supplied or used. No consent flow was run against a real identity provider.
 
 ## Next implementation step
-After selecting the email/calendar provider, add its API adapter with read-only operations first, token refresh/revocation, and integration tests against a controlled test tenant. Sending mail and creating calendar events require explicit write scopes and separate approval controls.
+After selecting the email/calendar provider, add its API adapter with read-only operations first, provider-side token revocation, and integration tests against a controlled test tenant. Sending mail and creating calendar events require explicit write scopes and separate approval controls.
