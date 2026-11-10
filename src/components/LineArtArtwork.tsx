@@ -1,5 +1,3 @@
-import React from 'react';
-
 export function LineArtLogo() {
   return <svg className="line-art-logo" viewBox="0 0 48 48" fill="none" aria-hidden="true">
     <path d="M8 34V14.5L24 6l16 8.5V34L24 42 8 34Z" stroke="currentColor" strokeWidth="1.25"/>
