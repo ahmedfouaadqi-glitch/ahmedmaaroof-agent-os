@@ -61,6 +61,8 @@ def test_disabled_high_risk_tool_cannot_execute(tmp_path):
         asyncio.run(registry.execute("email.send", {}, {}))
     with pytest.raises(ToolError, match="disabled"):
         asyncio.run(registry.execute("system.admin", {}, {}))
+    assert len(registry.audit()) == 2
+    assert all(item["status"] == "denied" for item in registry.audit())
 
 
 def test_tool_routes_are_registered():
