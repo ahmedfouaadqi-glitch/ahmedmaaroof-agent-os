@@ -1,12 +1,14 @@
 import asyncio
 from contextlib import asynccontextmanager
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import Depends, FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import Response
 from app.config import get_settings
-from app.schemas import AgentRunRequest, AutomationIn, AutomationToggle, ChatRequest, ChatResponse, DocumentIn, SearchRequest
+from app.schemas import AgentRunRequest, AutomationIn, AutomationToggle, ChatRequest, ChatResponse, DocumentIn, SearchRequest, VoiceSpeakIn
 from app.security import require_api_key
 from app.services.automation import AutomationStore
 from app.services.automation_worker import AutomationWorker
+from app.services.voice import VoiceServices, VoiceServiceError
 from app.services.agent import AgentOrchestrator
 from app.services.integrations import integration_status
 from app.services.memory import MemoryStore
@@ -21,6 +23,7 @@ async def lifespan(app: FastAPI):
     app.state.provider = OpenRouterProvider(settings)
     app.state.agent = AgentOrchestrator(app.state.memory, app.state.provider)
     app.state.automations = AutomationStore(settings.database_path)
+    app.state.voice = VoiceServices(settings)
     app.state.automation_worker = None
     app.state.automation_worker_task = None
     if settings.automation_worker_enabled:
@@ -95,6 +98,41 @@ async def run_agent(request: AgentRunRequest):
         return await app.state.agent.run(request.message, request.language, request.skill_id)
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+@app.get("/v1/voice/status", dependencies=[Depends(require_api_key)], tags=["voice"])
+async def voice_status():
+    return await app.state.voice.status()
+
+@app.post("/v1/voice/transcribe", dependencies=[Depends(require_api_key)], tags=["voice"])
+async def transcribe_audio(
+    file: UploadFile = File(...),
+    language: str | None = Form(default=None, max_length=12),
+):
+    allowed = {"audio/mpeg", "audio/wav", "audio/x-wav", "audio/webm", "audio/ogg", "audio/mp4", "audio/aac", "application/octet-stream"}
+    if file.content_type and file.content_type not in allowed:
+        raise HTTPException(status_code=415, detail="Unsupported audio content type")
+    audio = await file.read(15 * 1024 * 1024 + 1)
+    if not audio:
+        raise HTTPException(status_code=400, detail="Audio file is empty")
+    if len(audio) > 15 * 1024 * 1024:
+        raise HTTPException(status_code=413, detail="Audio file exceeds 15 MB")
+    try:
+        return await app.state.voice.transcribe(
+            audio, file.filename or "recording", file.content_type or "application/octet-stream", language
+        )
+    except VoiceServiceError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+
+@app.post("/v1/voice/speak", dependencies=[Depends(require_api_key)], tags=["voice"])
+async def speak_text(request: VoiceSpeakIn):
+    try:
+        audio, media_type = await app.state.voice.speak(
+            request.input, request.voice, request.response_format
+        )
+        return Response(content=audio, media_type=media_type)
+    except VoiceServiceError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
 
 @app.get("/v1/automations", dependencies=[Depends(require_api_key)], tags=["automations"])
 async def list_automations():
