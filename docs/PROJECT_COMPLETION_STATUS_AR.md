@@ -12,7 +12,8 @@
 4. PR #8 — OAuth Foundation: PKCE، state لمرة واحدة، تشفير Fernet، تخزين SQLite، تجديد access token تلقائياً، واختبارات. لا يوجد مزود OAuth حقيقي مختار أو موصول بعد.
 5. PR #9 — Designer Engine: تقدير تكلفة، موافقة لمرة واحدة، بوابة ميزانية، توليد صورة عبر endpoint متوافق، وتخزين محلي للنتائج. الإعدادات المالية والمزود معطلة افتراضياً.
 6. PR #10 — Tool Registry: أدوات قراءة آمنة، عقود مدخلات، تصنيف مخاطر، تعطيل الأدوات عالية الخطورة، وسجل تدقيق دائم.
-7. PR #11 (قيد الإنشاء) — Security Hardening: rate limiting في SQLite، حد حجم الطلبات، headers أمنية، وتحديد معدل callback OAuth.
+7. PR #11 — Security Hardening: rate limiting في SQLite، حد حجم الطلبات، headers أمنية، وتحديد معدل callback OAuth.
+8. PR #12 (قيد الإنشاء) — API Integration Tests: تشغيل FastAPI lifecycle على قاعدة مؤقتة واختبار الأدوات والأتمتة وحالات تكامل الصوت وOAuth وDesigner.
 
 كل PR ما زال مفتوحاً. PR #5 مبني على PR #4، وPR #6 مبني على PR #5. يجب دمجها بالتسلسل إذا تقرر الدمج، مع مراجعة كل تغيير قبل الدمج.
 
@@ -62,8 +63,9 @@
 - يلزم استكمال تدوير الأسرار، عزل البيانات، rate limiting على الحافة، ومراجعة أمنية قبل الإنتاج.
 
 ### 7. الاختبارات
-- CI يغطي اختبارات Backend الحالية وبناء Frontend.
-- لا توجد بعد اختبارات E2E شاملة للرحلات الفعلية، ولا اختبارات على خدمات Whisper/Kokoro الحقيقية، ولا اختبارات OAuth أو Designer.
+- أضيف اختبار تكامل FastAPI يغطي health/security headers، tool execution/audit، automation create/list، وفشل OAuth/Designer الآمن عند غياب الإعدادات.
+- CI الحالي اجتاز 32 اختبار Backend وبناء Frontend.
+- لا توجد بعد اختبارات متصفح Playwright، ولا اختبارات خدمات خارجية حقيقية أو OAuth tenant أو Whisper/Kokoro أو Designer.
 - يلزم اختبار ضغط وأمن وعزل مستخدمين قبل الإنتاج.
 
 ### 8. النشر
@@ -90,7 +92,7 @@
 4. اختيار مزود Designer والتحقق من التسعير ثم تهيئة endpoint/model/key والميزانية؛ إضافة عقد فيديو منفصل إذا كان مطلوباً.
 5. استكمال ربط Tool Registry مع orchestrator/model tool calling، ثم بناء RBAC والموافقات وسجل التدقيق الشامل.
 6. بناء الهوية متعددة المستخدمين وعزل Workspace وRBAC وإدارة الجلسات والأسرار؛ ثم تقوية rate limiting ومراجعة الأمن.
-7. إضافة E2E وsecurity/load tests واختبار تكاملات حقيقية.
+7. إضافة Playwright E2E وsecurity/load tests واختبار تكاملات حقيقية.
 8. نشر Backend دائم وFrontend وHTTPS وbackup/monitoring.
 9. تنفيذ قبول نهائي وتوثيق الوظائف المثبتة والفجوات.
 
