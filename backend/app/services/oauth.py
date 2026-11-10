@@ -101,6 +101,64 @@ class OAuthConnector:
             "connected_at": row["connected_at"] if row else None,
         }
 
+
+    async def access_token(self, integration: str) -> str:
+        """Return a usable access token, refreshing it shortly before expiry."""
+        if integration not in self.INTEGRATIONS:
+            raise OAuthError("Unsupported OAuth integration")
+        with self._connect() as db:
+            row = db.execute(
+                "SELECT token_ciphertext, expires_at FROM oauth_connections WHERE integration = ?",
+                (integration,),
+            ).fetchone()
+        if row is None:
+            raise OAuthError("OAuth integration is not authorized")
+        fernet = self._fernet()
+        try:
+            token_data = json.loads(fernet.decrypt(row["token_ciphertext"].encode()).decode())
+        except (InvalidToken, ValueError, TypeError) as exc:
+            raise OAuthError("Stored OAuth token could not be decrypted") from exc
+        expires_at = datetime.fromisoformat(row["expires_at"]) if row["expires_at"] else None
+        if expires_at is None or expires_at > datetime.now(timezone.utc) + timedelta(seconds=60):
+            return token_data["access_token"]
+        refresh_token = token_data.get("refresh_token")
+        if not refresh_token:
+            raise OAuthError("OAuth access token expired and no refresh token is available")
+        config = self._config(integration)
+        payload = {
+            "grant_type": "refresh_token",
+            "refresh_token": refresh_token,
+            "client_id": config["client_id"],
+            "client_secret": config["client_secret"],
+        }
+        async with httpx.AsyncClient(timeout=20, transport=self.transport) as client:
+            response = await client.post(
+                config["token_url"], data=payload, headers={"Accept": "application/json"}
+            )
+        if response.is_error:
+            raise OAuthError(f"OAuth token refresh returned HTTP {response.status_code}")
+        try:
+            refreshed = response.json()
+        except ValueError as exc:
+            raise OAuthError("OAuth refresh endpoint returned invalid JSON") from exc
+        if not isinstance(refreshed, dict) or not isinstance(refreshed.get("access_token"), str):
+            raise OAuthError("OAuth refresh response is missing access_token")
+        merged = {**token_data, **refreshed}
+        merged.setdefault("refresh_token", refresh_token)
+        expires_in = refreshed.get("expires_in")
+        new_expiry = (
+            (datetime.now(timezone.utc) + timedelta(seconds=int(expires_in))).isoformat()
+            if isinstance(expires_in, (int, float)) and expires_in > 0
+            else None
+        )
+        encrypted = fernet.encrypt(json.dumps(merged, separators=(",", ":")).encode()).decode()
+        with self._connect() as db:
+            db.execute(
+                "UPDATE oauth_connections SET token_ciphertext = ?, expires_at = ? WHERE integration = ?",
+                (encrypted, new_expiry, integration),
+            )
+        return merged["access_token"]
+
     def disconnect(self, integration: str) -> bool:
         if integration not in self.INTEGRATIONS:
             raise OAuthError("Unsupported OAuth integration")
