@@ -11,6 +11,8 @@ from app.services.automation_worker import AutomationWorker
 from app.services.voice import VoiceServices, VoiceServiceError
 from app.services.oauth import OAuthConnector, OAuthError
 from app.services.designer import DesignerService, DesignerError
+from app.services.tool_registry import build_default_registry, ToolError
+from app.schemas import ToolExecuteIn
 from app.services.agent import AgentOrchestrator
 from app.services.integrations import integration_status
 from app.services.memory import MemoryStore
@@ -28,6 +30,7 @@ async def lifespan(app: FastAPI):
     app.state.voice = VoiceServices(settings)
     app.state.oauth = OAuthConnector(settings.database_path, settings)
     app.state.designer = DesignerService(settings.database_path, settings.designer_output_dir, settings)
+    app.state.tools = build_default_registry(settings.database_path)
     app.state.automation_worker = None
     app.state.automation_worker_task = None
     if settings.automation_worker_enabled:
@@ -141,6 +144,32 @@ async def oauth_disconnect(integration: str):
     except OAuthError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 
+
+
+@app.get("/v1/tools", dependencies=[Depends(require_api_key)], tags=["tools"])
+async def list_tools():
+    return {"tools": app.state.tools.list_tools()}
+
+@app.post("/v1/tools/{tool_id}/execute", dependencies=[Depends(require_api_key)], tags=["tools"])
+async def execute_tool(tool_id: str, request: ToolExecuteIn):
+    try:
+        return await app.state.tools.execute(
+            tool_id,
+            request.arguments,
+            {
+                "memory": app.state.memory,
+                "automations": app.state.automations,
+                "integrations": lambda: integration_status(settings),
+            },
+        )
+    except ToolError as exc:
+        message = str(exc)
+        status_code = 404 if message == "Unknown tool" else 403 if "disabled" in message or "approval" in message else 422
+        raise HTTPException(status_code=status_code, detail=message) from exc
+
+@app.get("/v1/tools/audit", dependencies=[Depends(require_api_key)], tags=["tools"])
+async def tool_audit(limit: int = 50):
+    return {"executions": app.state.tools.audit(max(1, min(limit, 200)))}
 
 @app.post("/v1/designer/estimate", dependencies=[Depends(require_api_key)], tags=["designer"])
 async def designer_estimate(request: DesignerEstimateIn):
