@@ -1,11 +1,11 @@
 import asyncio
 from contextlib import asynccontextmanager
-from fastapi import Depends, FastAPI, File, Form, HTTPException, UploadFile
+from fastapi import Depends, FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, Response
 from app.config import get_settings
 from app.schemas import AgentRunRequest, AutomationIn, AutomationToggle, ChatRequest, ChatResponse, DocumentIn, SearchRequest, VoiceSpeakIn, DesignerEstimateIn, DesignerGenerateIn
-from app.security import require_api_key
+from app.security import require_api_key, require_public_rate_limit
 from app.services.automation import AutomationStore
 from app.services.automation_worker import AutomationWorker
 from app.services.voice import VoiceServices, VoiceServiceError
@@ -59,6 +59,28 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="Ahmed Maaroof Agent OS API", version="0.2.0", description="Bilingual personal agent operating system API.", lifespan=lifespan)
 app.add_middleware(CORSMiddleware, allow_origins=settings.allowed_origins, allow_credentials=True, allow_methods=["GET","POST","PATCH","DELETE","OPTIONS"], allow_headers=["Authorization","Content-Type","apikey","x-client-info"])
+
+
+@app.middleware("http")
+async def security_headers_and_body_limit(request: Request, call_next):
+    content_length = request.headers.get("content-length")
+    if content_length:
+        try:
+            if int(content_length) > settings.max_body_bytes:
+                from fastapi.responses import JSONResponse
+                return JSONResponse(status_code=413, content={"detail": "Request body exceeds configured size limit"})
+        except ValueError:
+            from fastapi.responses import JSONResponse
+            return JSONResponse(status_code=400, content={"detail": "Invalid Content-Length"})
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["Permissions-Policy"] = "microphone=(self), camera=(), geolocation=()"
+    response.headers["X-Permitted-Cross-Domain-Policies"] = "none"
+    if request.url.scheme == "https":
+        response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+    return response
 
 @app.get("/v1/health", tags=["system"])
 async def health():
@@ -120,7 +142,7 @@ async def oauth_start(integration: str):
         raise HTTPException(status_code=503, detail=str(exc)) from exc
 
 @app.get("/v1/oauth/{integration}/callback", tags=["integrations"])
-async def oauth_callback(integration: str, code: str | None = None, state: str | None = None, error: str | None = None):
+async def oauth_callback(integration: str, code: str | None = None, state: str | None = None, error: str | None = None, _: None = Depends(require_public_rate_limit)):
     if error:
         raise HTTPException(status_code=400, detail="OAuth provider denied authorization")
     if not code or not state:
