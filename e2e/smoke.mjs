@@ -80,7 +80,7 @@ try {
   assert.match(await page.title(), /Ahmed Maaroof Agent OS/);
 
   await page.getByPlaceholder("AGENT_API_KEY").first().fill("e2e-test-key");
-  await page.getByRole("button", { name: "اتصال" }).click();
+  await page.locator(".connect-banner button").click();
   await page.getByText("النظام متصل").waitFor();
 
   await page.getByRole("button", { name: /المساعد المركزي/ }).first().click();
