@@ -71,12 +71,12 @@ class OAuthConnector:
             raise OAuthError("Unsupported OAuth integration")
         prefix = integration.lower() + "_oauth_"
         fields = {
-            "authorization_url": getattr(self.settings, prefix + "AUTHORIZATION_URL", ""),
-            "token_url": getattr(self.settings, prefix + "TOKEN_URL", ""),
-            "client_id": getattr(self.settings, prefix + "CLIENT_ID", ""),
-            "client_secret": getattr(self.settings, prefix + "CLIENT_SECRET", ""),
-            "redirect_uri": getattr(self.settings, prefix + "REDIRECT_URI", ""),
-            "scopes": getattr(self.settings, prefix + "SCOPES", ""),
+            "authorization_url": getattr(self.settings, prefix + "authorization_url", ""),
+            "token_url": getattr(self.settings, prefix + "token_url", ""),
+            "client_id": getattr(self.settings, prefix + "client_id", ""),
+            "client_secret": getattr(self.settings, prefix + "client_secret", ""),
+            "redirect_uri": getattr(self.settings, prefix + "redirect_uri", ""),
+            "scopes": getattr(self.settings, prefix + "scopes", ""),
         }
         missing = [name for name, value in fields.items() if not value]
         if missing:
