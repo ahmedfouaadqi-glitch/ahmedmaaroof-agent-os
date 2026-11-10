@@ -3,6 +3,7 @@ from fastapi.testclient import TestClient
 import app.main as main
 
 
+# End-to-end API smoke coverage for the configured personal workspace.
 def test_api_integration_smoke_and_security_headers(tmp_path, monkeypatch):
     monkeypatch.setattr(main.settings, "database_path", tmp_path / "agent.sqlite3")
     monkeypatch.setattr(main.settings, "vault_path", tmp_path / "vault")
