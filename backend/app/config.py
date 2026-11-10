@@ -48,6 +48,10 @@ class Settings(BaseSettings):
     automation_poll_seconds: int = Field(default=5, ge=1, le=300)
     automation_timeout_seconds: int = Field(default=120, ge=10, le=900)
     max_request_chars: int = Field(default=20_000, ge=1_000, le=100_000)
+    max_body_bytes: int = Field(default=20 * 1024 * 1024, ge=1_000_000, le=100 * 1024 * 1024)
+    rate_limit_per_minute: int = Field(default=120, ge=10, le=10_000)
+    public_rate_limit_per_minute: int = Field(default=30, ge=5, le=1_000)
+    rate_limit_window_seconds: int = Field(default=60, ge=10, le=3600)
 
     @property
     def allowed_origins(self) -> list[str]:
